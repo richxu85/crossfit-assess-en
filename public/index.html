@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrossFit AI Athlete Assessment</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0e17; --surface: #111827; --surface2: #1a2332; --border: #1e293b;
+            --text: #e2e8f0; --text-dim: #94a3b8; --accent: #3b82f6;
+            --green: #10b981; --orange: #f97316; --red: #ef4444; --cyan: #06b6d4; --purple: #8b5cf6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh;
+        }
+        .top-bar {
+            position: fixed; top: 0; width: 100%; z-index: 100;
+            background: rgba(10,14,23,0.85); backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border); padding: 14px 24px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .top-bar .logo { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.5px; }
+        .top-bar .logo span { color: var(--orange); }
+        .top-bar .step-dots { display: flex; gap: 8px; }
+        .step-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: all 0.3s; }
+        .step-dot.active { background: var(--orange); box-shadow: 0 0 8px rgba(249,115,22,0.5); }
+        .step-dot.done { background: var(--green); }
+        .container { max-width: 640px; margin: 0 auto; padding: 80px 20px 40px; }
+        .step { display: none; animation: fadeIn 0.4s ease; }
+        .step.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .step-header { margin-bottom: 32px; }
+        .step-number { font-size: 0.75rem; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+        .step-title { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+        .step-subtitle { color: var(--text-dim); font-size: 0.9rem; }
+        .field { margin-bottom: 20px; }
+        .field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-dim); }
+        .field label .optional { font-weight: 400; color: #64748b; font-size: 0.75rem; }
+        .field input, .field select {
+            width: 100%; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border);
+            border-radius: 8px; color: var(--text); font-family: inherit; font-size: 0.95rem; transition: border-color 0.2s;
+        }
+        .field input:focus, .field select:focus { outline: none; border-color: var(--orange); }
+        .field input::placeholder { color: #475569; }
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .lift-group {
+            display: grid; grid-template-columns: 1fr 100px; gap: 10px; align-items: end;
+            margin-bottom: 14px; padding: 14px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border);
+        }
+        .lift-group .lift-name { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+        .lift-group .lift-hint { font-size: 0.72rem; color: #64748b; }
+        .lift-group input {
+            text-align: center; background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 6px; padding: 10px 8px; color: var(--text); font-family: inherit; font-size: 1rem; font-weight: 600;
+        }
+        .lift-group input:focus { outline: none; border-color: var(--orange); }
+        .lift-group .unit { font-size: 0.7rem; color: var(--text-dim); text-align: center; margin-top: 2px; }
+        .gym-item { margin-bottom: 16px; }
+        .gym-item .gym-label { font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; }
+        .gym-options { display: flex; gap: 6px; flex-wrap: wrap; }
+        .gym-opt {
+            padding: 7px 14px; font-size: 0.8rem; font-weight: 500; border-radius: 20px;
+            border: 1px solid var(--border); background: var(--surface); color: var(--text-dim);
+            cursor: pointer; transition: all 0.2s; user-select: none;
+        }
+        .gym-opt:hover { border-color: var(--orange); color: var(--text); }
+        .gym-opt.selected { background: rgba(249,115,22,0.15); border-color: var(--orange); color: var(--orange); font-weight: 600; }
+        .cardio-row {
+            display: grid; grid-template-columns: 1fr 80px 10px 80px; gap: 8px; align-items: center;
+            margin-bottom: 14px; padding: 14px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border);
+        }
+        .cardio-row .cardio-name { font-size: 0.9rem; font-weight: 600; }
+        .cardio-row .cardio-hint { font-size: 0.72rem; color: #64748b; }
+        .cardio-row input {
+            text-align: center; background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 6px; padding: 10px 6px; color: var(--text); font-family: inherit; font-size: 1rem; font-weight: 600; width: 100%;
+        }
+        .cardio-row input:focus { outline: none; border-color: var(--orange); }
+        .cardio-row .sep { text-align: center; color: var(--text-dim); font-weight: 700; font-size: 1.1rem; }
+        .btn-row { display: flex; gap: 12px; margin-top: 32px; }
+        .btn {
+            padding: 14px 32px; font-size: 1rem; font-weight: 600; border: none; border-radius: 8px;
+            cursor: pointer; transition: all 0.3s; font-family: inherit;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #f97316, #fb923c); color: white;
+            box-shadow: 0 6px 20px rgba(249,115,22,0.3); flex: 1;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(249,115,22,0.4); }
+        .btn-back { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); }
+        .btn-back:hover { border-color: var(--text-dim); color: var(--text); }
+        .results-container { animation: fadeIn 0.6s ease; }
+        .open-banner {
+            background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1));
+            border: 1px solid rgba(59,130,246,0.2); border-radius: 12px; padding: 24px; margin-bottom: 20px; text-align: center;
+        }
+        .open-banner .ob-pct { font-size: 3.5rem; font-weight: 800; line-height: 1; }
+        .open-banner .ob-label { font-size: 0.85rem; color: var(--text-dim); margin-top: 6px; }
+        .open-banner .ob-note { font-size: 0.78rem; color: #64748b; margin-top: 10px; }
+        .open-rank-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+        .open-stat { text-align: center; padding: 12px; background: rgba(59,130,246,0.06); border-radius: 8px; }
+        .open-stat .os-val { font-size: 1.4rem; font-weight: 800; color: var(--accent); }
+        .open-stat .os-label { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+        .domain-bars { margin-bottom: 28px; }
+        .domain-bar { margin-bottom: 18px; }
+        .domain-bar .db-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+        .domain-bar .db-name { font-size: 0.85rem; font-weight: 600; }
+        .domain-bar .db-val { font-size: 0.85rem; font-weight: 700; }
+        .domain-bar .db-track { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+        .domain-bar .db-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 14px; }
+        .card p, .card li { font-size: 0.9rem; color: var(--text-dim); line-height: 1.7; }
+        .card ul { padding-left: 18px; }
+        .card li { margin-bottom: 6px; }
+        .card li strong { color: var(--text); }
+        .wod-card { padding: 16px; background: var(--surface2); border-radius: 10px; margin-bottom: 10px; border-left: 3px solid var(--orange); }
+        .wod-card .wod-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+        .wod-card .wod-desc { font-size: 0.78rem; color: #64748b; margin-top: 2px; font-style: italic; }
+        .wod-card .wod-why { font-size: 0.82rem; color: var(--text-dim); }
+        .wod-card .wod-est { font-size: 0.78rem; color: var(--orange); margin-top: 6px; font-weight: 600; }
+        .unlock-card { padding: 16px 18px; background: var(--surface2); border-radius: 12px; margin-bottom: 12px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+        .unlock-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+        .unlock-card.gym::before { background: var(--purple); }
+        .unlock-card.str::before { background: var(--red); }
+        .unlock-card.eng::before { background: var(--cyan); }
+        .unlock-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .unlock-domain { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+        .unlock-badge { font-size: 0.65rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; background: rgba(249,115,22,0.15); color: var(--orange); }
+        .unlock-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+        .unlock-desc { font-size: 0.82rem; color: var(--text-dim); line-height: 1.5; }
+        .unlock-progress { display: flex; gap: 3px; margin-top: 8px; }
+        .unlock-pip { width: 100%; height: 4px; border-radius: 2px; background: var(--border); }
+        .unlock-pip.filled { background: var(--green); }
+        .unlock-pip.current { background: var(--orange); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .priority-tag { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-right: 6px; margin-bottom: 6px; }
+        .priority-tag.strength { background: rgba(239,68,68,0.15); color: var(--red); }
+        .priority-tag.gymnastics { background: rgba(139,92,246,0.15); color: var(--purple); }
+        .priority-tag.cardio { background: rgba(6,182,212,0.15); color: var(--cyan); }
+        .priority-tag.metcon { background: rgba(249,115,22,0.15); color: var(--orange); }
+        .share-row { text-align: center; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
+        .share-row .btn { font-size: 0.85rem; padding: 10px 24px; }
+        .loading-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(10,14,23,0.92); backdrop-filter: blur(8px); flex-direction: column; justify-content: center; align-items: center; }
+        .loading-overlay.active { display: flex; }
+        .loading-spinner { width: 48px; height: 48px; border: 3px solid var(--border); border-top-color: var(--orange); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { margin-top: 16px; font-size: 0.9rem; color: var(--text-dim); }
+        @media (max-width: 500px) {
+            .row2 { grid-template-columns: 1fr; }
+            .lift-group { grid-template-columns: 1fr 80px; }
+            .cardio-row { grid-template-columns: 1fr 60px 10px 60px; }
+            .open-banner .ob-pct { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="logo">CrossFit <span>AI</span> Assessment</div>
+        <div class="step-dots" id="stepDots">
+            <div class="step-dot active" data-step="1"></div>
+            <div class="step-dot" data-step="2"></div>
+            <div class="step-dot" data-step="3"></div>
+            <div class="step-dot" data-step="4"></div>
+        </div>
+    </div>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Analyzing your performance data...</div>
+    </div>
+    <div class="container">
+
+        <!-- Step 1: Basics -->
+        <div class="step active" id="step1">
+            <div class="step-header">
+                <div class="step-number">Step 1 of 4</div>
+                <div class="step-title">Basic Info</div>
+                <div class="step-subtitle">Help us calibrate your assessment</div>
+            </div>
+            <div class="row2">
+                <div class="field">
+                    <label>Gender</label>
+                    <select id="inGender"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select>
+                </div>
+                <div class="field">
+                    <label>Age</label>
+                    <input type="number" id="inAge" placeholder="e.g. 32" min="14" max="80">
+                </div>
+            </div>
+            <div class="row2">
+                <div class="field">
+                    <label>Body Weight</label>
+                    <input type="number" id="inWeight" placeholder="lbs" min="80" max="400" step="1">
+                </div>
+                <div class="field">
+                    <label>Height</label>
+                    <input type="number" id="inHeight" placeholder="inches (e.g. 70)" min="48" max="84">
+                </div>
+            </div>
+            <div class="row2">
+                <div class="field">
+                    <label>CrossFit Experience</label>
+                    <select id="inExp"><option value="">Select...</option><option value="0">Less than 6 months</option><option value="1">6 months – 1 year</option><option value="2">1 – 2 years</option><option value="3">2 – 4 years</option><option value="5">4+ years</option></select>
+                </div>
+                <div class="field">
+                    <label>Training Days per Week</label>
+                    <select id="inFreq"><option value="">Select...</option><option value="2">2 days</option><option value="3">3 days</option><option value="4">4 days</option><option value="5">5 days</option><option value="6">6+ days</option></select>
+                </div>
+            </div>
+            <div class="btn-row"><button class="btn btn-primary" onclick="goStep(2)">Next: Strength Numbers</button></div>
+        </div>
+
+        <!-- Step 2: Strength -->
+        <div class="step" id="step2">
+            <div class="step-header">
+                <div class="step-number">Step 2 of 4</div>
+                <div class="step-title">Strength Numbers</div>
+                <div class="step-subtitle">Enter your 1RM or recent max — leave blank if unsure</div>
+            </div>
+            <div class="lift-group"><div><div class="lift-name">Back Squat</div><div class="lift-hint">1RM or recent heavy single</div></div><div><input type="number" id="liftBS" placeholder="—" step="5"><div class="unit">lbs</div></div></div>
+            <div class="lift-group"><div><div class="lift-name">Deadlift</div><div class="lift-hint">1RM or recent heavy single</div></div><div><input type="number" id="liftDL" placeholder="—" step="5"><div class="unit">lbs</div></div></div>
+            <div class="lift-group"><div><div class="lift-name">Clean</div><div class="lift-hint">Power or squat clean</div></div><div><input type="number" id="liftCL" placeholder="—" step="5"><div class="unit">lbs</div></div></div>
+            <div class="lift-group"><div><div class="lift-name">Snatch</div><div class="lift-hint">Power or squat snatch</div></div><div><input type="number" id="liftSN" placeholder="—" step="5"><div class="unit">lbs</div></div></div>
+            <div class="lift-group"><div><div class="lift-name">Strict Press</div><div class="lift-hint">Standing strict press max</div></div><div><input type="number" id="liftSP" placeholder="—" step="5"><div class="unit">lbs</div></div></div>
+            <div class="lift-group"><div><div class="lift-name">Front Squat</div><div class="lift-hint">Optional</div></div><div><input type="number" id="liftFS" placeholder="—" step="5"><div class="unit">lbs</div></div></div>
+            <div class="btn-row">
+                <button class="btn btn-back" onclick="goStep(1)">Back</button>
+                <button class="btn btn-primary" onclick="goStep(3)">Next: Gymnastics</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Gymnastics -->
+        <div class="step" id="step3">
+            <div class="step-header">
+                <div class="step-number">Step 3 of 4</div>
+                <div class="step-title">Gymnastics</div>
+                <div class="step-subtitle">Select the option that best matches your current ability</div>
+            </div>
+            <div class="gym-item"><div class="gym-label">Strict Pull-ups (unbroken)</div><div class="gym-options" data-gym="pullup"><div class="gym-opt" data-val="0">Can't do</div><div class="gym-opt" data-val="1">1–3</div><div class="gym-opt" data-val="2">4–8</div><div class="gym-opt" data-val="3">9–15</div><div class="gym-opt" data-val="4">15+</div></div></div>
+            <div class="gym-item"><div class="gym-label">Kipping Pull-ups (unbroken)</div><div class="gym-options" data-gym="kipping"><div class="gym-opt" data-val="0">Can't do</div><div class="gym-opt" data-val="1">1–5</div><div class="gym-opt" data-val="2">6–15</div><div class="gym-opt" data-val="3">16–25</div><div class="gym-opt" data-val="4">25+</div></div></div>
+            <div class="gym-item"><div class="gym-label">Chest-to-Bar Pull-ups (unbroken)</div><div class="gym-options" data-gym="c2b"><div class="gym-opt" data-val="0">Can't do</div><div class="gym-opt" data-val="1">1–3</div><div class="gym-opt" data-val="2">4–10</div><div class="gym-opt" data-val="3">10+</div></div></div>
+            <div class="gym-item"><div class="gym-label">Bar Muscle-ups (unbroken)</div><div class="gym-options" data-gym="bmu"><div class="gym-opt" data-val="0">Can't do</div><div class="gym-opt" data-val="1">1–2</div><div class="gym-opt" data-val="2">3–5</div><div class="gym-opt" data-val="3">5+</div></div></div>
+            <div class="gym-item"><div class="gym-label">Ring Muscle-ups (unbroken)</div><div class="gym-options" data-gym="rmu"><div class="gym-opt" data-val="0">Can't do</div><div class="gym-opt" data-val="1">1–2</div><div class="gym-opt" data-val="2">3–5</div><div class="gym-opt" data-val="3">5+</div></div></div>
+            <div class="gym-item"><div class="gym-label">Handstand Push-ups — kipping (unbroken)</div><div class="gym-options" data-gym="hspu"><div class="gym-opt" data-val="0">Can't do</div><div class="gym-opt" data-val="1">1–5</div><div class="gym-opt" data-val="2">6–15</div><div class="gym-opt" data-val="3">15+</div></div></div>
+            <div class="gym-item"><div class="gym-label">Toes-to-Bar (unbroken)</div><div class="gym-options" data-gym="t2b"><div class="gym-opt" data-val="0">Can't do</div><div class="gym-opt" data-val="1">1–5</div><div class="gym-opt" data-val="2">6–15</div><div class="gym-opt" data-val="3">15+</div></div></div>
+            <div class="gym-item"><div class="gym-label">Double-unders (unbroken)</div><div class="gym-options" data-gym="du"><div class="gym-opt" data-val="0">Can't do</div><div class="gym-opt" data-val="1">1–15</div><div class="gym-opt" data-val="2">16–40</div><div class="gym-opt" data-val="3">40+</div></div></div>
+            <div class="btn-row">
+                <button class="btn btn-back" onclick="goStep(2)">Back</button>
+                <button class="btn btn-primary" onclick="goStep(4)">Next: Cardio & Engine</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Cardio -->
+        <div class="step" id="step4">
+            <div class="step-header">
+                <div class="step-number">Step 4 of 4</div>
+                <div class="step-title">Cardio & Engine</div>
+                <div class="step-subtitle">Your best times for these efforts — leave blank if unsure</div>
+            </div>
+            <div class="cardio-row"><div><div class="cardio-name">500m Row</div><div class="cardio-hint">All-out sprint</div></div><input type="number" id="cardio500m" placeholder="min" min="0" max="9"><div class="sep">:</div><input type="number" id="cardio500s" placeholder="sec" min="0" max="59"></div>
+            <div class="cardio-row"><div><div class="cardio-name">1000m Row</div><div class="cardio-hint">All-out effort</div></div><input type="number" id="cardio1km" placeholder="min" min="0" max="9"><div class="sep">:</div><input type="number" id="cardio1ks" placeholder="sec" min="0" max="59"></div>
+            <div class="cardio-row"><div><div class="cardio-name">1 Mile Run</div><div class="cardio-hint">Best time</div></div><input type="number" id="cardioMilem" placeholder="min" min="0" max="20"><div class="sep">:</div><input type="number" id="cardioMiles" placeholder="sec" min="0" max="59"></div>
+            <div class="cardio-row"><div><div class="cardio-name">2000m Row</div><div class="cardio-hint">Optional</div></div><input type="number" id="cardio2km" placeholder="min" min="0" max="20"><div class="sep">:</div><input type="number" id="cardio2ks" placeholder="sec" min="0" max="59"></div>
+            <p style="margin-top:16px;font-size:0.82rem;color:#64748b;">Classic Benchmark WODs <span class="optional">(optional — significantly improves accuracy)</span></p>
+            <div class="cardio-row" style="margin-top:12px;"><div><div class="cardio-name">Fran</div><div class="cardio-hint">21-15-9 Thrusters 95/65 + Pull-ups</div></div><input type="number" id="wFranm" placeholder="min" min="0" max="20"><div class="sep">:</div><input type="number" id="wFrans" placeholder="sec" min="0" max="59"></div>
+            <div class="cardio-row"><div><div class="cardio-name">Grace</div><div class="cardio-hint">30 Clean & Jerk 135/95</div></div><input type="number" id="wGracem" placeholder="min" min="0" max="20"><div class="sep">:</div><input type="number" id="wGraces" placeholder="sec" min="0" max="59"></div>
+            <div class="btn-row">
+                <button class="btn btn-back" onclick="goStep(3)">Back</button>
+                <button class="btn btn-primary" onclick="runAssessment()">Generate Assessment</button>
+            </div>
+        </div>
+
+        <div class="step" id="stepResults"></div>
+    </div>
+
+<script>
+    // ── LBS to KG conversion for internal BW-ratio calculations ──
+    const LB2KG = 0.453592;
+
+    let currentStep = 1;
+    function goStep(n) {
+        if (n === 2 && (!val('inGender') || !val('inWeight'))) { alert('Please enter at least your gender and body weight'); return; }
+        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+        document.getElementById(n <= 4 ? `step${n}` : 'stepResults').classList.add('active');
+        document.querySelectorAll('.step-dot').forEach((d,i) => { d.classList.toggle('done', i+1 < n); d.classList.toggle('active', i+1 === n); });
+        currentStep = n;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    document.querySelectorAll('.gym-options').forEach(g => {
+        g.querySelectorAll('.gym-opt').forEach(o => {
+            o.addEventListener('click', () => { g.querySelectorAll('.gym-opt').forEach(x => x.classList.remove('selected')); o.classList.add('selected'); });
+        });
+    });
+    function val(id) { return document.getElementById(id).value.trim(); }
+    function num(id) { const v = parseFloat(val(id)); return isNaN(v) ? null : v; }
+    function gymVal(key) { const s = document.querySelector(`[data-gym="${key}"] .gym-opt.selected`); return s ? parseInt(s.dataset.val) : null; }
+    function timeVal(mId, sId) { const m = num(mId), s = num(sId); if (m === null && s === null) return null; return ((m||0)*60)+(s||0); }
+    function fmtTime(sec) { if (!sec) return '—'; const m = Math.floor(sec/60), s = Math.round(sec%60); return `${m}:${s.toString().padStart(2,'0')}`; }
+
+    // ── Percentile tables (BW-ratio based, unit-agnostic) ──
+    const STRENGTH_TABLES = {
+        M: { back_squat:[[0.8,10],[1.0,25],[1.25,40],[1.5,55],[1.75,70],[2.0,82],[2.25,90],[2.5,96]], deadlift:[[1.0,10],[1.25,25],[1.5,40],[1.75,55],[2.0,68],[2.25,80],[2.5,90],[2.75,96]], clean:[[0.5,10],[0.7,25],[0.85,40],[1.0,55],[1.15,68],[1.3,80],[1.5,90],[1.7,96]], snatch:[[0.4,10],[0.55,25],[0.65,38],[0.75,50],[0.9,65],[1.05,78],[1.2,88],[1.4,96]], press:[[0.35,10],[0.45,25],[0.55,40],[0.65,55],[0.75,70],[0.85,82],[1.0,92],[1.15,97]], front_squat:[[0.7,10],[0.85,25],[1.0,40],[1.2,55],[1.4,70],[1.6,82],[1.8,92],[2.0,97]] },
+        F: { back_squat:[[0.5,10],[0.7,25],[0.9,40],[1.1,55],[1.3,70],[1.5,82],[1.7,92],[2.0,97]], deadlift:[[0.7,10],[0.9,25],[1.1,40],[1.3,55],[1.5,68],[1.75,80],[2.0,90],[2.25,97]], clean:[[0.35,10],[0.5,25],[0.6,38],[0.7,50],[0.85,65],[1.0,78],[1.15,90],[1.35,97]], snatch:[[0.25,10],[0.35,25],[0.45,38],[0.55,50],[0.65,65],[0.8,78],[0.95,90],[1.15,97]], press:[[0.2,10],[0.3,25],[0.4,40],[0.5,55],[0.6,70],[0.7,82],[0.8,92],[0.95,97]], front_squat:[[0.5,10],[0.65,25],[0.8,40],[0.95,55],[1.1,70],[1.3,82],[1.5,92],[1.75,97]] }
+    };
+    const CARDIO_TABLES = {
+        M: { row500:[[80,98],[88,90],[95,80],[102,65],[110,50],[120,35],[132,20],[145,10]], row1000:[[185,98],[200,90],[215,78],[230,62],[248,48],[268,32],[290,18],[320,8]], mile:[[330,98],[360,92],[390,80],[420,65],[460,50],[510,35],[570,20],[660,8]], row2000:[[390,98],[415,90],[440,78],[470,62],[505,48],[545,32],[590,18],[650,8]] },
+        F: { row500:[[95,98],[105,90],[113,78],[122,62],[132,48],[145,32],[158,18],[175,8]], row1000:[[220,98],[240,88],[260,75],[280,60],[305,45],[330,30],[360,16],[400,6]], mile:[[375,98],[410,90],[445,78],[480,62],[530,48],[585,32],[650,18],[730,6]], row2000:[[460,98],[495,88],[530,75],[570,60],[620,45],[670,30],[730,16],[800,6]] }
+    };
+    const GYM_SCORES = { pullup:[8,25,50,72,90], kipping:[5,20,45,68,88], c2b:[10,32,58,82], bmu:[15,45,72,92], rmu:[12,50,78,95], hspu:[10,35,62,88], t2b:[8,28,55,82], du:[5,25,55,85] };
+    const GYM_WEIGHTS = { pullup:0.05, kipping:0.10, c2b:0.12, bmu:0.18, rmu:0.20, hspu:0.15, t2b:0.10, du:0.10 };
+    const WOD_TABLES = {
+        M: { fran:[[120,98],[150,92],[180,82],[210,70],[250,55],[300,40],[380,25],[480,12]], grace:[[100,98],[120,90],[150,78],[180,62],[220,48],[270,32],[340,18],[420,8]] },
+        F: { fran:[[155,98],[190,90],[230,78],[280,62],[330,48],[400,32],[480,18],[600,8]], grace:[[130,98],[160,90],[200,78],[240,62],[290,48],[350,32],[420,18],[520,8]] }
+    };
+
+    function interpolate(table, value, inverted = false) {
+        if (inverted) {
+            if (value <= table[0][0]) return table[0][1]; if (value >= table[table.length-1][0]) return table[table.length-1][1];
+            for (let i=0;i<table.length-1;i++) { if (value>=table[i][0]&&value<=table[i+1][0]) { const r=(value-table[i][0])/(table[i+1][0]-table[i][0]); return table[i][1]+r*(table[i+1][1]-table[i][1]); } }
+        } else {
+            if (value <= table[0][0]) return table[0][1]*(value/table[0][0]); if (value >= table[table.length-1][0]) return Math.min(99, table[table.length-1][1]);
+            for (let i=0;i<table.length-1;i++) { if (value>=table[i][0]&&value<=table[i+1][0]) { const r=(value-table[i][0])/(table[i+1][0]-table[i][0]); return table[i][1]+r*(table[i+1][1]-table[i][1]); } }
+        }
+        return 50;
+    }
+
+    function runAssessment() {
+        document.getElementById('loadingOverlay').classList.add('active');
+        setTimeout(() => { const r = computeAssessment(); renderResults(r); document.getElementById('loadingOverlay').classList.remove('active'); goStep(5); }, 1200);
+    }
+
+    function computeAssessment() {
+        const gender = val('inGender'), bwLbs = num('inWeight'), age = num('inAge')||30, exp = num('inExp')||1, freq = num('inFreq')||3;
+        const bwKg = bwLbs * LB2KG; // convert to kg for BW-ratio calculations
+
+        // Lifts entered in lbs — convert to kg for ratio calculations
+        const liftsLbs = { back_squat:num('liftBS'), deadlift:num('liftDL'), clean:num('liftCL'), snatch:num('liftSN'), press:num('liftSP'), front_squat:num('liftFS') };
+        // Fill missing
+        if (!liftsLbs.front_squat && liftsLbs.back_squat) liftsLbs.front_squat = Math.round(liftsLbs.back_squat*0.82/5)*5;
+        if (!liftsLbs.back_squat && liftsLbs.front_squat) liftsLbs.back_squat = Math.round(liftsLbs.front_squat/0.82/5)*5;
+        if (!liftsLbs.deadlift && liftsLbs.back_squat) liftsLbs.deadlift = Math.round(liftsLbs.back_squat*1.2/5)*5;
+        if (!liftsLbs.snatch && liftsLbs.clean) liftsLbs.snatch = Math.round(liftsLbs.clean*0.78/5)*5;
+        if (!liftsLbs.clean && liftsLbs.snatch) liftsLbs.clean = Math.round(liftsLbs.snatch/0.78/5)*5;
+        if (!liftsLbs.press && liftsLbs.clean) liftsLbs.press = Math.round(liftsLbs.clean*0.55/5)*5;
+
+        const stTable = STRENGTH_TABLES[gender]||STRENGTH_TABLES.M;
+        const liftPcts = {}; let stSum=0, stN=0;
+        const lW = {back_squat:0.22,deadlift:0.18,clean:0.25,snatch:0.15,press:0.08,front_squat:0.12};
+        for (const [k,v] of Object.entries(liftsLbs)) {
+            if (v && stTable[k]) { const ratio=v/(bwLbs); const pct=interpolate(stTable[k],ratio); liftPcts[k]={value:v,ratio:Math.round(ratio*100)/100,percentile:Math.round(pct)}; stSum+=pct*(lW[k]||0.15); stN+=(lW[k]||0.15); }
+        }
+        const strengthScore = stN>0 ? stSum/stN : 40;
+
+        const gymData = {}; let gymSum=0, gymN=0;
+        for (const [k,w] of Object.entries(GYM_WEIGHTS)) { const v=gymVal(k); if (v!==null&&GYM_SCORES[k]) { const pct=GYM_SCORES[k][v]; gymData[k]={level:v,percentile:Math.round(pct)}; gymSum+=pct*w; gymN+=w; } }
+        const gymScore = gymN>0 ? gymSum/gymN : 35;
+
+        const cardioVals = { row500:timeVal('cardio500m','cardio500s'), row1000:timeVal('cardio1km','cardio1ks'), mile:timeVal('cardioMilem','cardioMiles'), row2000:timeVal('cardio2km','cardio2ks') };
+        const cTable = CARDIO_TABLES[gender]||CARDIO_TABLES.M;
+        const cardioPcts = {}; let cardioSum=0, cardioN=0;
+        const cW = {row500:0.3,row1000:0.3,mile:0.25,row2000:0.15};
+        for (const [k,v] of Object.entries(cardioVals)) { if (v&&cTable[k]) { const pct=interpolate(cTable[k],v,true); cardioPcts[k]={time:v,percentile:Math.round(pct)}; cardioSum+=pct*(cW[k]||0.25); cardioN+=(cW[k]||0.25); } }
+        const cardioScore = cardioN>0 ? cardioSum/cardioN : 40;
+
+        const wodVals = { fran:timeVal('wFranm','wFrans'), grace:timeVal('wGracem','wGraces') };
+        const wTable = WOD_TABLES[gender]||WOD_TABLES.M; const wodPcts = {}; let wodSum=0, wodN=0;
+        for (const [k,v] of Object.entries(wodVals)) { if (v&&wTable[k]) { const pct=interpolate(wTable[k],v,true); wodPcts[k]={time:v,percentile:Math.round(pct)}; wodSum+=pct; wodN++; } }
+        const metconScore = wodN>0 ? wodSum/wodN : null;
+
+        let openPct;
+        if (metconScore!==null) openPct = strengthScore*0.25+gymScore*0.32+cardioScore*0.22+metconScore*0.21;
+        else openPct = strengthScore*0.30+gymScore*0.38+cardioScore*0.32;
+        if (age>35) openPct = Math.max(5, openPct-(age-35)*0.4);
+        if (exp>=3) openPct = Math.min(97, openPct+2);
+        openPct = Math.round(Math.max(3, Math.min(97, openPct)));
+
+        const domains = [
+            {key:'strength',label:'Strength',score:strengthScore,color:'var(--red)'},
+            {key:'gymnastics',label:'Gymnastics',score:gymScore,color:'var(--purple)'},
+            {key:'cardio',label:'Cardio / Engine',score:cardioScore,color:'var(--cyan)'},
+        ];
+        if (metconScore!==null) domains.push({key:'metcon',label:'Metcon',score:metconScore,color:'var(--orange)'});
+        domains.sort((a,b) => a.score-b.score);
+        const weakest=domains[0], strongest=domains[domains.length-1];
+
+        const unlocks = computeSkillUnlocks(gymData, liftsLbs, liftPcts, cardioPcts, gender, bwLbs);
+        const wodRecs = getWodRecs(weakest.key, strongest.key, gender, strengthScore, gymScore, cardioScore, gymData);
+
+        const totalOpen = gender==='M' ? 180000 : 120000;
+        const estRank = Math.max(1, Math.round(totalOpen*(1-openPct/100)));
+
+        return { gender, bwLbs, bwKg, age, exp, freq, strengthScore:Math.round(strengthScore), gymScore:Math.round(gymScore), cardioScore:Math.round(cardioScore), metconScore:metconScore!==null?Math.round(metconScore):null, openPct, estRank, totalOpen, domains, weakest, strongest, liftPcts, gymData, cardioPcts, wodPcts, liftsLbs, wodRecs, unlocks };
+    }
+
+    function computeSkillUnlocks(gymData, lifts, liftPcts, cardioPcts, gender, bwLbs) {
+        const unlocks = [], isMale = gender==='M';
+        const gymTree = [
+            {key:'pullup',name:'Strict Pull-up',reqLevel:1},{key:'kipping',name:'Kipping Pull-up',reqLevel:1},
+            {key:'t2b',name:'Toes-to-Bar',reqLevel:1},{key:'du',name:'Double-unders (20+)',reqLevel:2},
+            {key:'c2b',name:'Chest-to-Bar Pull-up',reqLevel:1},{key:'hspu',name:'Handstand Push-up',reqLevel:1},
+            {key:'bmu',name:'Bar Muscle-up',reqLevel:1},{key:'rmu',name:'Ring Muscle-up',reqLevel:1},
+        ];
+        const drills = {
+            pullup:'Start with banded pull-ups (3x8) and eccentric negatives (5x3, 5-sec lowering). Focus on getting your first strict rep.',
+            kipping:'Practice hollow-arch swings on the bar (3x10). Focus on hip drive and rhythm.', t2b:'Start with hanging knee raises (3x10) and progressively straighten your legs.',
+            du:'Practice the single-single-double rhythm. Dedicate 5 minutes daily — consistency is key.', c2b:'Build on kipping pull-ups with more aggressive hip drive. Aim to touch your chest to the bar.',
+            hspu:'Wall walks (3x3) → Pike push-ups (3x8) → Box HSPU. Requires ~0.65x BW strict press foundation.',
+            bmu:'Prerequisite: 8+ kipping C2B. Practice glide kips and banded bar muscle-ups. This is the Open separator!',
+            rmu:'Prerequisite: 3+ bar MU. Ring support hold → False grip rows → Banded ring MU transitions.',
+        };
+        let filled=0, found=false;
+        for (const item of gymTree) {
+            const lv = gymData[item.key] ? gymData[item.key].level : 0;
+            if (lv >= item.reqLevel) filled++;
+            else if (!found) { found=true; unlocks.push({domain:'Gymnastics',domainClass:'gym',name:item.name,badge:'Next Unlock',desc:drills[item.key],progress:filled,total:gymTree.length}); }
+        }
+        if (!found && filled===gymTree.length) unlocks.push({domain:'Gymnastics',domainClass:'gym',name:'All Core Skills Unlocked!',badge:'Complete',desc:'Focus on building volume: 5+ ring MU, 15+ HSPU, 10+ C2B unbroken.',progress:gymTree.length,total:gymTree.length});
+
+        const strMs = isMale ? [{lift:'back_squat',label:'Back Squat',targets:[1.0,1.25,1.5,1.75,2.0]},{lift:'clean',label:'Clean',targets:[0.7,0.85,1.0,1.15,1.3]}]
+                             : [{lift:'back_squat',label:'Back Squat',targets:[0.7,0.9,1.1,1.3,1.5]},{lift:'clean',label:'Clean',targets:[0.5,0.6,0.7,0.85,1.0]}];
+        for (const m of strMs) {
+            const v = lifts[m.lift]; if (!v) continue;
+            const ratio = v/bwLbs; let hit=0;
+            for (const t of m.targets) { if (ratio>=t) hit++; }
+            if (hit < m.targets.length) {
+                const nextT=m.targets[hit], nextLbs=Math.round(nextT*bwLbs/5)*5, gap=nextLbs-v;
+                unlocks.push({domain:'Strength',domainClass:'str',name:`${m.label}: ${nextLbs} lbs (${nextT}x BW)`,badge:`${gap} lbs to go`,desc:`Currently ${v} lbs (${ratio.toFixed(2)}x BW). Target: ${nextT}x bodyweight. Use progressive overload — add 5 lbs every 1-2 weeks.`,progress:hit,total:m.targets.length});
+                break;
+            }
+        }
+
+        const cardMs = isMale ? [{key:'row500',label:'500m Row',targets:[120,110,100,92,85]}] : [{key:'row500',label:'500m Row',targets:[145,132,120,110,100]}];
+        for (const m of cardMs) {
+            const data = cardioPcts[m.key]; if (!data) continue;
+            const cur = data.time; let hit=0;
+            for (const t of m.targets) { if (cur<=t) hit++; }
+            if (hit < m.targets.length) {
+                const nextT=m.targets[hit], diff=cur-nextT;
+                unlocks.push({domain:'Engine',domainClass:'eng',name:`${m.label}: Under ${fmtTime(nextT)}`,badge:`${Math.round(diff)}s to shave`,desc:`Currently ${fmtTime(cur)}. Target: ${fmtTime(nextT)}. Training: 8x250m row sprints with 1:00 rest between.`,progress:hit,total:m.targets.length});
+                break;
+            }
+        }
+        return unlocks;
+    }
+
+    function getWodRecs(weakKey, strongKey, gender, strS, gymS, cardS, gymData) {
+        const isMale = gender==='M';
+        function est(bM,bF,sw,gw,cw) { const b=isMale?bM:bF; const c=(strS*sw+gymS*gw+cardS*cw)/(sw+gw+cw); return Math.round(Math.max(b*0.5, b*(1+(50-c)*0.012))); }
+        const recs = [];
+        if (weakKey==='strength') {
+            recs.push({name:'DT',desc:'5 RFT: 12 Deadlifts + 9 Hang Cleans + 6 Push Jerks (155/105)',why:'Barbell cycling under fatigue — directly exposes strength gaps',est:`Est. ${fmtTime(est(480,540,0.5,0.2,0.3))}`,tag:'weak'});
+            recs.push({name:'Linda',desc:'10-9-8...1: Deadlift 1.5x BW + Bench BW + Clean 0.75x BW',why:'The ultimate barbell endurance test',est:null,tag:'weak'});
+        }
+        if (weakKey==='gymnastics') {
+            recs.push({name:'Cindy',desc:'20 min AMRAP: 5 Pull-ups + 10 Push-ups + 15 Squats',why:'High-volume bodyweight under time pressure',est:`Est. ~${Math.round(est(22,18,0.1,0.6,0.3)/60*30)} rounds`,tag:'weak'});
+            recs.push({name:gymData.hspu&&gymData.hspu.level>=1?'Mary':'Annie',desc:gymData.hspu&&gymData.hspu.level>=1?'20 min AMRAP: 5 HSPU + 10 Pistols + 15 Pull-ups':'50-40-30-20-10: DU + Sit-ups',why:'Build your gymnastics capacity',est:null,tag:'weak'});
+        }
+        if (weakKey==='cardio') {
+            recs.push({name:'Murph',desc:'1 mi Run + 100 Pull-ups + 200 Push-ups + 300 Squats + 1 mi Run',why:'The gold standard engine test',est:`Est. ${fmtTime(est(2400,2700,0.15,0.25,0.6))}`,tag:'weak'});
+        }
+        if (strongKey==='strength') recs.push({name:'Grace',desc:'30 Clean & Jerk (135/95)',why:'Play to your barbell strength — see how fast you can go!',est:`Est. ${fmtTime(est(180,210,0.6,0.1,0.3))}`,tag:'strong'});
+        if (strongKey==='gymnastics') recs.push({name:'Diane',desc:'21-15-9: Deadlifts (225/155) + HSPU',why:'Your gymnastics will carry you through this one',est:`Est. ${fmtTime(est(300,360,0.35,0.45,0.2))}`,tag:'strong'});
+        if (strongKey==='cardio') recs.push({name:'Kelly',desc:'5 RFT: 400m Run + 30 Box Jumps (24/20") + 30 Wall Balls (20/14)',why:'Engine-dominant — right in your wheelhouse',est:`Est. ${fmtTime(est(1380,1560,0.2,0.2,0.6))}`,tag:'strong'});
+        recs.push({name:'Fran',desc:'21-15-9: Thrusters (95/65) + Pull-ups',why:'The most iconic CrossFit benchmark — everyone should know their Fran time',est:`Est. ${fmtTime(est(240,300,0.35,0.4,0.25))}`,tag:'bench'});
+        recs.push({name:'Helen',desc:'3 RFT: 400m Run + 21 KB Swings (53/35) + 12 Pull-ups',why:'Tests all three domains equally — a true fitness snapshot',est:`Est. ${fmtTime(est(540,630,0.25,0.3,0.45))}`,tag:'bench'});
+        return recs;
+    }
+
+    function renderResults(r) {
+        const el = document.getElementById('stepResults');
+        let tierLabel, tierColor;
+        if (r.openPct>=90){tierLabel='Elite';tierColor='#f59e0b';}
+        else if(r.openPct>=75){tierLabel='Advanced';tierColor='#10b981';}
+        else if(r.openPct>=50){tierLabel='Intermediate';tierColor='#3b82f6';}
+        else if(r.openPct>=25){tierLabel='Developing';tierColor='#8b5cf6';}
+        else{tierLabel='Beginner';tierColor='#94a3b8';}
+
+        const wkLabel=r.weakest.label, stLabel=r.strongest.label, gap=Math.round(r.strongest.score-r.weakest.score);
+        let prioHTML = gap>20 ? `<p>Your <strong>${wkLabel}</strong> lags significantly behind your <strong>${stLabel}</strong> by ~${gap} percentile points. Closing this gap is your biggest lever for overall improvement.</p>` :
+            gap>8 ? `<p>Your <strong>${wkLabel}</strong> trails your <strong>${stLabel}</strong> slightly. Targeted work here will yield the best returns.</p>` :
+            `<p>Your domains are fairly balanced — focus on across-the-board improvement.</p>`;
+
+        let advItems = '';
+        if (r.weakest.key==='strength') advItems=`<li><strong>Priority:</strong> Add 1-2 dedicated strength sessions per week (squat, deadlift, Oly progressions)</li><li><strong>In class:</strong> Go heavier on barbell WODs when possible</li><li><strong>Target:</strong> Back squat to ${r.gender==='M'?'1.5':'1.1'}x bodyweight</li>`;
+        else if (r.weakest.key==='gymnastics') advItems=`<li><strong>Priority:</strong> Skill work before/after class — 10-15 min daily</li><li><strong>Focus:</strong> ${!r.gymData.c2b||r.gymData.c2b.level<2?'Chest-to-bar pull-ups (Open staple)':!r.gymData.bmu||r.gymData.bmu.level<1?'Bar muscle-ups (the Open separator)':'Ring MU and HSPU (elite differentiators)'}</li><li><strong>Volume:</strong> Build capacity for sets of 5+ before chasing speed</li>`;
+        else if (r.weakest.key==='cardio') advItems=`<li><strong>Priority:</strong> Add 2-3 interval sessions per week (row, bike, or run)</li><li><strong>Key workout:</strong> 5x500m row sprints with 2:00 rest</li><li><strong>In class:</strong> Push the pace on longer WODs — don't sandbag</li>`;
+        else advItems=`<li><strong>Priority:</strong> Practice pacing on benchmark WODs — find your sustainable output</li>`;
+
+        let liftHTML = '';
+        const lNames = {back_squat:'Back Squat',deadlift:'Deadlift',clean:'Clean',snatch:'Snatch',press:'Strict Press',front_squat:'Front Squat'};
+        for (const [k,v] of Object.entries(r.liftPcts)) {
+            liftHTML += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+                <span style="font-size:0.85rem;">${lNames[k]||k}</span>
+                <span style="font-size:0.85rem;"><strong>${v.value} lbs</strong> <span style="color:var(--text-dim);">(${v.ratio}x BW)</span> — <span style="color:${v.percentile>=70?'var(--green)':v.percentile>=40?'var(--accent)':'var(--orange)'};">${v.percentile}th percentile</span></span>
+            </div>`;
+        }
+
+        let unlockHTML = '';
+        for (const u of r.unlocks) {
+            const pips = Array.from({length:u.total},(_,i) => i<u.progress?'<div class="unlock-pip filled"></div>':i===u.progress?'<div class="unlock-pip current"></div>':'<div class="unlock-pip"></div>').join('');
+            unlockHTML += `<div class="unlock-card ${u.domainClass}"><div class="unlock-head"><span class="unlock-domain" style="color:${u.domainClass==='gym'?'var(--purple)':u.domainClass==='str'?'var(--red)':'var(--cyan)'};">${u.domain}</span><span class="unlock-badge">${u.badge}</span></div><div class="unlock-name">${u.name}</div><div class="unlock-desc">${u.desc}</div><div class="unlock-progress">${pips}</div></div>`;
+        }
+
+        let wodWeak='',wodStrong='',wodBench='';
+        for (const w of r.wodRecs) {
+            const card = `<div class="wod-card"><div class="wod-name">${w.name}</div><div class="wod-desc">${w.desc}</div><div class="wod-why">${w.why}</div>${w.est?`<div class="wod-est">${w.est}</div>`:''}</div>`;
+            if(w.tag==='weak') wodWeak+=card; else if(w.tag==='strong') wodStrong+=card; else wodBench+=card;
+        }
+
+        el.innerHTML = `<div class="results-container">
+            <div class="open-banner">
+                <div class="ob-label">Estimated CrossFit Open Ranking</div>
+                <div class="ob-pct" style="color:${tierColor};">Top ${100-r.openPct}%</div>
+                <div class="ob-label" style="margin-top:8px;color:${tierColor};font-size:1.1rem;font-weight:700;">${tierLabel}</div>
+                <div class="open-rank-grid">
+                    <div class="open-stat"><div class="os-val">~${r.estRank.toLocaleString()}</div><div class="os-label">Estimated rank out of ${r.totalOpen.toLocaleString()}</div></div>
+                    <div class="open-stat"><div class="os-val">${r.openPct}</div><div class="os-label">Out of 100 CrossFitters you'd beat</div></div>
+                </div>
+                <div class="ob-note" style="margin-top:14px;">Based on your strength, gymnastics, and cardio data vs. the global CrossFit Open population (${r.gender==='M'?'Men':'Women'})</div>
+            </div>
+            <div class="card"><div class="card-title">Domain Scores</div><div class="domain-bars">
+                ${r.domains.sort((a,b)=>b.score-a.score).map(d=>`<div class="domain-bar"><div class="db-head"><span class="db-name">${d.label}</span><span class="db-val" style="color:${d.color};">${Math.round(d.score)}th pctl</span></div><div class="db-track"><div class="db-fill" style="width:${d.score}%;background:${d.color};"></div></div></div>`).join('')}
+            </div></div>
+            ${unlockHTML?`<div class="card"><div class="card-title">Next Skills to Unlock</div><p style="margin-bottom:14px;font-size:0.85rem;color:var(--text-dim);">Your personal progression path — each unlock opens new training possibilities.</p>${unlockHTML}</div>`:''}
+            ${liftHTML?`<div class="card"><div class="card-title">Strength Breakdown</div>${liftHTML}</div>`:''}
+            <div class="card"><div class="card-title">Training Priorities</div><div style="margin-bottom:10px;"><span class="priority-tag ${r.weakest.key}">#1 Focus: ${r.weakest.label}</span>${r.domains.length>2?`<span class="priority-tag ${r.domains[1].key}">#2: ${r.domains[1].label}</span>`:''}</div>${prioHTML}<ul style="margin-top:12px;">${advItems}</ul></div>
+            ${wodWeak?`<div class="card"><div class="card-title">WODs to Attack Your Weakness</div><p style="margin-bottom:14px;font-size:0.85rem;color:var(--text-dim);">These will hurt — that's the point. Log your times and retest in 8 weeks.</p>${wodWeak}</div>`:''}
+            ${wodStrong?`<div class="card"><div class="card-title">WODs Where You'll Shine</div><p style="margin-bottom:14px;font-size:0.85rem;color:var(--text-dim);">Your strengths give you a big edge here — chase a PR!</p>${wodStrong}</div>`:''}
+            <div class="card"><div class="card-title">Benchmarks Every CrossFitter Should Know</div><p style="margin-bottom:14px;font-size:0.85rem;color:var(--text-dim);">Test these regularly to track your overall fitness.</p>${wodBench}</div>
+            <div class="share-row"><button class="btn btn-back" onclick="location.reload()">Retake Assessment</button></div>
+        </div>`;
+    }
+</script>
+</body>
+</html>

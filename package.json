@@ -1,0 +1,11 @@
+{
+  "name": "crossfit-assess-en",
+  "version": "1.0.0",
+  "description": "CrossFit AI Athlete Assessment - English Version",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
