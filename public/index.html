@@ -181,6 +181,10 @@
                 <div class="step-title">Basic Info</div>
                 <div class="step-subtitle">Help us calibrate your assessment</div>
             </div>
+            <div class="field">
+                <label>Name</label>
+                <input type="text" id="inName" placeholder="Your name" maxlength="100">
+            </div>
             <div class="row2">
                 <div class="field">
                     <label>Gender</label>
@@ -210,6 +214,10 @@
                     <label>Training Days per Week</label>
                     <select id="inFreq"><option value="">Select...</option><option value="2">2 days</option><option value="3">3 days</option><option value="4">4 days</option><option value="5">5 days</option><option value="6">6+ days</option></select>
                 </div>
+            </div>
+            <div class="field">
+                <label>Email <span class="optional">(optional)</span></label>
+                <input type="email" id="inEmail" placeholder="your@email.com" maxlength="200">
             </div>
             <div class="btn-row"><button class="btn btn-primary" onclick="goStep(2)">Next: Strength Numbers</button></div>
         </div>
@@ -283,7 +291,7 @@
 
     let currentStep = 1;
     function goStep(n) {
-        if (n === 2 && (!val('inGender') || !val('inWeight'))) { alert('Please enter at least your gender and body weight'); return; }
+        if (n === 2 && (!val('inName') || !val('inGender') || !val('inAge') || !val('inWeight'))) { alert('Please fill in your name, gender, age, and body weight'); return; }
         document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
         document.getElementById(n <= 4 ? `step${n}` : 'stepResults').classList.add('active');
         document.querySelectorAll('.step-dot').forEach((d,i) => { d.classList.toggle('done', i+1 < n); d.classList.toggle('active', i+1 === n); });
@@ -330,7 +338,30 @@
 
     function runAssessment() {
         document.getElementById('loadingOverlay').classList.add('active');
-        setTimeout(() => { const r = computeAssessment(); renderResults(r); document.getElementById('loadingOverlay').classList.remove('active'); goStep(5); }, 1200);
+        setTimeout(() => {
+            const r = computeAssessment();
+            renderResults(r);
+            document.getElementById('loadingOverlay').classList.remove('active');
+            goStep(5);
+            // Submit to backend
+            submitToBackend(r);
+        }, 1200);
+    }
+
+    function submitToBackend(r) {
+        const tierLabel = r.openPct>=90?'Elite':r.openPct>=75?'Advanced':r.openPct>=50?'Intermediate':r.openPct>=25?'Developing':'Beginner';
+        const payload = {
+            name: val('inName'),
+            gender: val('inGender'),
+            age: num('inAge'),
+            weight: num('inWeight'),
+            email: val('inEmail') || null,
+            open_percentile: r.openPct,
+            tier: tierLabel,
+            assessment_data: { strengthScore:r.strengthScore, gymScore:r.gymScore, cardioScore:r.cardioScore, metconScore:r.metconScore, liftPcts:r.liftPcts, gymData:r.gymData, cardioPcts:r.cardioPcts, wodPcts:r.wodPcts }
+        };
+        fetch('/api/submit', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) })
+            .then(res => res.json()).then(d => console.log('Saved:', d)).catch(e => console.log('Submit skipped:', e));
     }
 
     function computeAssessment() {
